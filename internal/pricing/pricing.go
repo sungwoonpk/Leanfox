@@ -123,7 +123,7 @@ func NewTable(overrides map[string]Rates) *Table {
 		t.entries[k] = v
 	}
 	for k, v := range overrides {
-		t.entries[k] = Entry{Rates: v}
+		t.entries[strings.ToLower(strings.TrimSpace(k))] = Entry{Rates: v}
 	}
 	return t
 }

@@ -97,6 +97,13 @@ func TestOverridesReplaceAndAreNotVerified(t *testing.T) {
 	}
 }
 
+func TestOverrideNamesAreMatchedIgnoringCase(t *testing.T) {
+	tab := NewTable(map[string]Rates{" My-Model ": {Input: 5}})
+	if e, ok := tab.Lookup("my-model"); !ok || e.Input != 5 {
+		t.Errorf("found %+v, %v", e, ok)
+	}
+}
+
 func TestReadOverrides(t *testing.T) {
 	good := `{"models": {" Custom-1 ": {"input": 3, "output": 15, "cache_read": 0.3, "cache_write_5m": 3.75, "cache_write_1h": 6}}}`
 	got, err := ReadOverrides(strings.NewReader(good))
