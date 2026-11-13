@@ -77,3 +77,15 @@ func TestTheProgramRuns(t *testing.T) {
 		t.Errorf("no arguments: exit %d", code)
 	}
 }
+
+func TestTheProgramHasNoNetworkCode(t *testing.T) {
+	out, err := exec.Command("go", "list", "-deps", ".").Output() // #nosec G204 -- fixed arguments
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, pkg := range strings.Fields(string(out)) {
+		if pkg == "net" || strings.HasPrefix(pkg, "net/") || strings.HasPrefix(pkg, "crypto/tls") {
+			t.Errorf("the program links %s: it must not be able to send anything anywhere", pkg)
+		}
+	}
+}

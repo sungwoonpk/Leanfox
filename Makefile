@@ -1,4 +1,4 @@
-.PHONY: build test race cover lint fmt vet vuln check clean
+.PHONY: build test race cover lint fmt vet vuln demo check clean
 
 build:
 	go build -trimpath -o bin/leanfox ./cmd/leanfox
@@ -30,6 +30,10 @@ lint:
 
 vuln:
 	govulncheck ./...
+
+# The report on a made-up session, so that it can be tried without any Claude Code history.
+demo: build
+	./bin/leanfox report examples/demo-session.jsonl
 
 # Everything CI runs, in the order it runs it.
 check: lint race cover vuln
