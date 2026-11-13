@@ -131,6 +131,7 @@ type GroupRate struct {
 
 // Carrier is a single tool result that was expensive to carry.
 type Carrier struct {
+	Session  string  `json:"session,omitempty"`
 	Tool     string  `json:"tool"`
 	What     string  `json:"what"`
 	Tokens   int64   `json:"tokens"`
