@@ -136,6 +136,10 @@ Flags:
 		Paths: paths, Root: discover.DefaultRoot(env.Getenv, env.Home), Since: since,
 		Project: f.project, Session: f.session, Now: env.Now(),
 	})
+	if errors.Is(err, os.ErrNotExist) && len(paths) == 0 {
+		fmt.Fprintf(stderr, "leanfox: there is no Claude Code history at %s. Name a file or folder, or set CLAUDE_CONFIG_DIR.\n", discover.DefaultRoot(env.Getenv, env.Home))
+		return ExitError
+	}
 	if err != nil {
 		fmt.Fprintf(stderr, "leanfox: %v\n", err)
 		return ExitError

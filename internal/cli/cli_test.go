@@ -205,12 +205,16 @@ func TestFiltersAndNamedFiles(t *testing.T) {
 }
 
 func TestNoSessionsAtAll(t *testing.T) {
+	// A folder that exists and holds nothing.
 	code, _, errs := run(home(t, nil), "report")
-	if code != ExitError {
-		t.Errorf("exit %d", code)
+	if code != ExitError || !strings.Contains(errs, "no history") && !strings.Contains(errs, "no session files found") {
+		t.Errorf("exit %d stderr %q", code, errs)
 	}
-	if !strings.Contains(errs, "no session files found") && !strings.Contains(errs, "no such file") {
-		t.Errorf("stderr %q", errs)
+	// A machine that has never run Claude Code.
+	env := Env{Getenv: func(string) string { return "" }, Home: t.TempDir(), Now: func() time.Time { return fixedNow }}
+	code, _, errs = run(env, "report")
+	if code != ExitError || !strings.Contains(errs, "no Claude Code history at") || !strings.Contains(errs, "CLAUDE_CONFIG_DIR") {
+		t.Errorf("exit %d stderr %q", code, errs)
 	}
 }
 
