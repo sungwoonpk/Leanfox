@@ -1,0 +1,11 @@
+# Build output
+/bin/
+/dist/
+*.test
+*.out
+
+# Local data that must never be committed: real session files and anything derived from them
+/sessions/
+*.jsonl
+
+.DS_Store

@@ -1,0 +1,6 @@
+// Writing output to the user's terminal. A failed write to a closed pipe is not something the program can act on.
+fmt.Fprint
+fmt.Fprintf
+fmt.Fprintln
+// Closing a file that was only read.
+(*os.File).Close
