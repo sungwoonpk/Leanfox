@@ -289,7 +289,7 @@ func makeItem(e *transcript.Event, uses map[string]transcript.Event) (item, bool
 	case transcript.KindToolUse:
 		uses[e.ToolID] = *e
 		w := what(e.Tool, e.Detail)
-		return item{group: GroupToolCalls, name: w, tool: e.Tool, what: w, chars: e.Chars}, true
+		return item{group: GroupToolCalls, name: w, tool: e.Tool, what: specific(e.Tool, e.Detail, w), chars: e.Chars}, true
 	case transcript.KindToolResult:
 		use, known := uses[e.ToolID]
 		tool := e.Tool
@@ -297,12 +297,23 @@ func makeItem(e *transcript.Event, uses map[string]transcript.Event) (item, bool
 			tool = "(unknown tool)"
 		}
 		w := what(tool, use.Detail)
-		return item{group: GroupToolResults, name: w, tool: tool, what: w, chars: e.Chars, digest: e.Digest}, true
+		return item{group: GroupToolResults, name: w, tool: tool, what: specific(tool, use.Detail, w), chars: e.Chars, digest: e.Digest}, true
 	case transcript.KindThinking:
 		// The file keeps almost none of the reasoning text, so characters say nothing about its size. A block is the unit.
 		return item{group: GroupThinking, name: "reasoning", chars: e.Chars, units: 1}, true
 	}
 	return item{}, false // a turn is handled by the caller
+}
+
+// specific names a single call, for lists of single things: a file is named by its base name, never its folder.
+func specific(tool, detail, general string) string {
+	switch tool {
+	case "Read", "Edit", "Write", "NotebookEdit", "MultiEdit":
+		if detail != "" {
+			return tool + ": " + path.Base(detail)
+		}
+	}
+	return general
 }
 
 // what says what a tool call was about, without arguments: the kind of shell command, the name of a file.
@@ -324,7 +335,6 @@ func markRepeats(it *item, e *transcript.Event, uses map[string]transcript.Event
 		if e.Tool == "Read" && use.Detail != "" {
 			if readSeen[use.Detail] {
 				it.reread = true
-				it.what = "Read: " + path.Base(use.Detail)
 			}
 			readSeen[use.Detail] = true
 			return

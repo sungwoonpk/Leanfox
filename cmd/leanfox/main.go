@@ -2,10 +2,11 @@
 package main
 
 import (
-	"fmt"
 	"os"
+
+	"github.com/sungwoonpk/leanfox/internal/cli"
 )
 
 func main() {
-	fmt.Fprintln(os.Stdout, "leanfox: nothing here yet")
+	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, cli.OSEnv()))
 }
