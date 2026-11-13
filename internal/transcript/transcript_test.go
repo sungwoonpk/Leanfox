@@ -281,6 +281,16 @@ func TestToolResultShapes(t *testing.T) {
 	}
 }
 
+func TestResultSizeIsInCharactersNotBytes(t *testing.T) {
+	s := parse(t, jsonl(t, userBlocks(
+		m{"type": "tool_result", "tool_use_id": "a", "content": "안녕하세요"},
+		m{"type": "tool_result", "tool_use_id": "b", "content": []any{m{"type": "text", "text": "héllo"}}},
+	)))
+	if s.Events[0].Chars != 5 || s.Events[1].Chars != 5 {
+		t.Errorf("sizes %d and %d, want 5 characters each", s.Events[0].Chars, s.Events[1].Chars)
+	}
+}
+
 func TestCostState(t *testing.T) {
 	s := parse(t, jsonl(t,
 		m{"type": "cost-state", "totalCostUSD": 1.5, "modelUsage": m{

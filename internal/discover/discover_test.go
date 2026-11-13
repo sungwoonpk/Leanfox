@@ -77,6 +77,7 @@ func TestFilters(t *testing.T) {
 		{"since", Options{Since: 3 * 24 * time.Hour}, []string{"aaa111.jsonl", "bbb222.jsonl"}},
 		{"project, ignoring case", Options{Project: "SITE"}, []string{"ccc333.jsonl"}},
 		{"session prefix", Options{Session: "bbb"}, []string{"bbb222.jsonl"}},
+		{"session text in the middle is not a prefix", Options{Session: "222"}, []string{}},
 		{"all three", Options{Since: 3 * 24 * time.Hour, Project: "app", Session: "aaa"}, []string{"aaa111.jsonl"}},
 		{"nothing matches", Options{Project: "nope"}, []string{}},
 	}

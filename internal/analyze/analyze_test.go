@@ -313,6 +313,31 @@ func TestACacheRebuildIsCountedAndPriced(t *testing.T) {
 	near(t, "rebuild cost", a.Carry.RebuildUSD, 100_500*(4e-6-0.1e-6), 1e-6)
 }
 
+func TestAContextThatDipsDoesNotMakeAWriteLookBigger(t *testing.T) {
+	// The conversation shrank by 1,000 and then 3,000 tokens were written. Nothing grew, so all 3,000 are the rebuild.
+	b := newSession().
+		turn(sonnet, 0, 0, 0, 100_000).
+		turn(sonnet, 0, 0, 96_000, 3_000) // context 99,000: down by 1,000
+	a := Analyze(b.s, Options{})
+	if a.Carry.Rebuilds != 1 {
+		t.Fatalf("rebuilds = %d", a.Carry.Rebuilds)
+	}
+	near(t, "rebuild cost", a.Carry.RebuildUSD, 3_000*(4e-6-0.1e-6), 1e-9)
+}
+
+func TestTheBaseIsWrittenOnceAndReadByEveryLaterRequest(t *testing.T) {
+	// Three requests: the 30,000-token base is written by the first and read by the other two.
+	b := newSession().turn(sonnet, 0, 0, 0, 30_000).turn(sonnet, 0, 0, 30_000, 0).turn(sonnet, 0, 0, 30_000, 0)
+	a := Analyze(b.s, Options{})
+	var base Slice
+	for _, sl := range a.Carry.Slices {
+		if sl.Group == GroupBase {
+			base = sl
+		}
+	}
+	near(t, "base carry", base.CarryUSD, 30_000*(4e-6+2*0.1e-6), 1e-9)
+}
+
 func TestSmallWritesAreNotRebuilds(t *testing.T) {
 	b := newSession().turn(sonnet, 0, 0, 0, 100_000).turn(sonnet, 0, 0, 100_000, 1_500)
 	if got := Analyze(b.s, Options{}).Carry.Rebuilds; got != 0 {
