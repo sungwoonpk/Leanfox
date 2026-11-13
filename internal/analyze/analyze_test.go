@@ -338,6 +338,23 @@ func TestTheBaseIsWrittenOnceAndReadByEveryLaterRequest(t *testing.T) {
 	near(t, "base carry", base.CarryUSD, 30_000*(4e-6+2*0.1e-6), 1e-9)
 }
 
+func TestABaseThatWasAlreadyCachedIsOnlyRead(t *testing.T) {
+	// An earlier session left the system prompt in the cache, so the first request read all 30,000 tokens and wrote none.
+	b := newSession().turn(sonnet, 0, 0, 30_000, 1_000).turn(sonnet, 0, 0, 31_000, 0).turn(sonnet, 0, 0, 31_000, 0)
+	a := Analyze(b.s, Options{})
+	var base Slice
+	for _, sl := range a.Carry.Slices {
+		if sl.Group == GroupBase {
+			base = sl
+		}
+	}
+	// 31,000 tokens in the first request: 1,000 written, 30,000 read, and the base is read by two more requests.
+	// The base is what was there before the first request, which is the whole first context.
+	wantRead := 31_000.0*3*0.1e-6 - 1_000*0.1e-6 // every request reads it, except the 1,000 that the first one wrote
+	wantWrite := 1_000 * 4e-6
+	near(t, "base carry", base.CarryUSD, wantRead+wantWrite, 1e-9)
+}
+
 func TestSmallWritesAreNotRebuilds(t *testing.T) {
 	b := newSession().turn(sonnet, 0, 0, 0, 100_000).turn(sonnet, 0, 0, 100_000, 1_500)
 	if got := Analyze(b.s, Options{}).Carry.Rebuilds; got != 0 {

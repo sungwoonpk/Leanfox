@@ -7,5 +7,7 @@
 # Local data that must never be committed: real session files and anything derived from them
 /sessions/
 *.jsonl
+# except the made-up example session
+!/examples/*.jsonl
 
 .DS_Store

@@ -49,7 +49,10 @@ func carry(a *Analysis, segs []*segment, u unit, opts Options) {
 		base := slice(slices, GroupBase, "system prompt, tools, memory and the first message")
 		base.Items++
 		base.Tokens += sg.ctx[0]
-		base.CarryUSD += float64(sg.ctx[0]) * (u.write + float64(n-1)*u.read)
+		// The base is written once if the first request had to write it, and only read if the cache was already warm,
+		// which is the case when an earlier session left the system prompt in it. The first request says which.
+		written := float64(min(sg.cw[0], sg.ctx[0]))
+		base.CarryUSD += written*u.write + (float64(sg.ctx[0])-written)*u.read + float64(sg.ctx[0])*float64(n-1)*u.read
 
 		for i := range sg.items {
 			it := &sg.items[i]
