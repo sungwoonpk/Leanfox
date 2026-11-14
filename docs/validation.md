@@ -33,15 +33,31 @@ Each of these was found by comparing with the recorded numbers, and each is in t
 ## Tests
 
 - Unit tests with 99%+ coverage, a gate of 90% in CI.
-- **Mutation checking.** 43 one-line breakages of the price table, the reader, the carry formula, the rebuild rule, both
-  simulations, the command classifier and the report (`scripts/mutation-check.py`). The first run, of 41, missed 5. Four got tests
-  (result size in bytes, a dip in the context, the cost of carrying the base, a filter that matched anywhere in a name). The fifth, a
-  comparison at a measured size exactly equal to a limit, behaves the same either way and no test can tell the two apart. The two
-  added with the warm-start fix were caught at once.
+- **Mutation checking.** 59 one-line breakages of the price table, the reader, the carry formula, the rebuild rule, both
+  simulations, the command classifier, the report and lean mode's hook (`scripts/mutation-check.py`). The first run, of 41, missed
+  5. Four got tests (result size in bytes, a dip in the context, the cost of carrying the base, a filter that matched anywhere in a
+  name). The fifth, a comparison at a measured size exactly equal to a limit, behaves the same either way and no test can tell the
+  two apart. The 18 added later were caught, except one that showed a check in the hook to be redundant, which was removed.
 - The example session is made by a generator in a test, and the committed file and the README sample are checked against it.
 - The program is built and run as a separate process on a small file.
 
+## Lean mode
+
+- Unit tests of the parser (both the typed line and the tag envelope, and sentences that only start with the command), the state
+  files, each notice and its once-only rule, the cap, and every way a hook can fail without failing the prompt.
+- The commands in `hooks/hooks.json` are run through a shell, as Claude Code runs them, against the built program, with it on the
+  `PATH` and without.
+- **Once in real Claude Code 2.1.314**, with `--plugin-dir` and a separate state folder, six calls to Claude Haiku 5.5, about two
+  cents: `/leanfox` turned the mode on and the model said so, `/leanfox` again turned it off, `/leanfox status` reported it, a new
+  session with the mode on had the five rules in its context, and a new session with it off did not.
+
 ## What was not checked
+
+- **What lean mode does to cost or to quality.** The live check shows that the switch works. Nothing was measured about what the
+  rules change in an agent's work.
+- **Whether the notices read well to a person.** They are written for the model to relay in a sentence, and that was seen working
+  only for the switch itself.
+- **Windows, and other versions of Claude Code.**
 
 - **Other agents.** Only Claude Code's session format is read, and only the version of it that these files were written by.
 - **Prices outside the table.** The cache rates of Haiku 5.5 and the cache write rates of Fable 5.2 are not verified, because no

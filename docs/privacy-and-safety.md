@@ -18,6 +18,23 @@ what was said or written, and it does not write anything to disk.
 
 `--json` writes the same things. Both are meant to be safe to paste into an issue.
 
+## Lean mode's hook
+
+The hook runs on every prompt while the plugin is installed, so it is held to a stricter rule than the report: it must not get in
+the way.
+
+- It reads what Claude Code sends it (the session id, the path of the session file, the prompt) and, only while the mode is on,
+  the last 4 MiB of the session file, to find the size and time of the latest request. It keeps none of that. It keeps the mode and,
+  for each session, what the model was last told, which sizes were mentioned and when a pause was mentioned, in private files
+  (mode 0600, in a folder with mode 0700). Files for sessions untouched for 30 days are removed.
+- It checks a session id before using it in a file name, and refuses anything that could name another place.
+- It reads the session file only if the path is absolute and ends in `.jsonl`, and only if it is a regular file.
+- It never echoes what the user typed after `/leanfox`.
+- It always exits 0 for a known event, because exit code 2 blocks the user's prompt, and it prints nothing when it cannot do its
+  job. With `LEANFOX_DEBUG=1` it says on stderr what went wrong.
+- What it adds to the conversation is capped at 9,000 characters, under the 10,000 that Claude Code allows, and is cut at a
+  character, not in the middle of one.
+
 ## Nothing leaves the machine
 
 The program links no networking package, and a test fails if one is added. It makes no model calls and needs no key.

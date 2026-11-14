@@ -9,3 +9,4 @@ Each record says what was decided, why, and what it costs. Newest last.
 | 0003 | [The what-ifs are ceilings, and are never presented as savings](0003-what-ifs-are-ceilings.md)                  |
 | 0004 | [Go, with the standard library only](0004-go-standard-library-only.md)                                           |
 | 0005 | [Nothing private is printed: the kind of a command, the name of a file](0005-print-no-arguments.md)              |
+| 0006 | [Lean mode is a hook and a few plain instructions, and it never blocks, filters or rewrites](0006-lean-mode-through-hooks-and-plain-instructions.md) |

@@ -80,7 +80,8 @@ func nudges(path string, st *SessionState, now time.Time, tab *pricing.Table) []
 			write = rates.CacheWrite1h
 		}
 		extra := float64(l.context) * (write - rates.CacheRead) * 1e-6
-		if priced && extra >= gapMinUSD {
+		// A model that is not in the price table has no rates, so its extra cost is zero and nothing is said.
+		if extra >= gapMinUSD {
 			st.GapNudged = l.at.Unix()
 			out = append(out, fmt.Sprintf(
 				"Leanfox: the conversation sat idle for %s, longer than the cache lasts, so the request that follows writes all of its %s tokens again, about %s more than with a warm cache. "+
