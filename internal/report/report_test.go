@@ -89,6 +89,7 @@ func fullAnalysis() *analyze.Analysis {
 		},
 		Repeats: analyze.Repeats{
 			Rereads:     analyze.RepeatTotal{Count: 3, Tokens: 4000, USD: 0.2},
+			Rewrites:    analyze.RepeatTotal{Count: 4, Tokens: 90_000, USD: 1.2},
 			SameOutputs: analyze.RepeatTotal{Count: 2, Tokens: 900, USD: 0.05},
 			Top:         []analyze.RepeatRow{{What: "Read: main.go", Times: 3, USD: 0.2}},
 		},
@@ -123,7 +124,7 @@ func TestSessionReportShowsEverySection(t *testing.T) {
 		"Write", "5 calls", "Bash: go test", "8 results",
 		"not explained",
 		"THE 2 TOOL RESULTS THAT COST THE MOST TO CARRY", "Read: main.go",
-		"REPEATS", "3 reads of a file", "2 commands with the same output",
+		"REPEATS", "3 reads of a file", "4 files written whole over a file that was already in the conversation", "2 commands with the same output",
 		"WHAT COULD HAVE BEEN SAVED", "cap at", "(7 results cut)", "every  100 requests", "(1 restart)", "A negative number",
 		"HOW FAR TO TRUST THIS", "within 1%", "97%",
 	} {

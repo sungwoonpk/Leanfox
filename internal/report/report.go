@@ -226,13 +226,17 @@ func carriersSection(w io.Writer, cs []analyze.Carrier) {
 }
 
 func repeatsSection(w io.Writer, r *analyze.Repeats) {
-	if r.Rereads.Count+r.SameOutputs.Count == 0 {
+	if r.Rereads.Count+r.SameOutputs.Count+r.Rewrites.Count == 0 {
 		return
 	}
 	fmt.Fprintln(w, "REPEATS  (a repeat is sometimes needed: the file may have changed in a way the tool did not show)")
 	if r.Rereads.Count > 0 {
 		fmt.Fprintf(w, "  %s of a file that was already in the conversation and had not been edited: %s, %s\n",
 			plural(r.Rereads.Count, "read"), tokens(r.Rereads.Tokens)+" tokens", money(r.Rereads.USD))
+	}
+	if r.Rewrites.Count > 0 {
+		fmt.Fprintf(w, "  %s written whole over a file that was already in the conversation, where an edit would have carried only the change: %s tokens, %s\n",
+			plural(r.Rewrites.Count, "file"), tokens(r.Rewrites.Tokens), money(r.Rewrites.USD))
 	}
 	if r.SameOutputs.Count > 0 {
 		fmt.Fprintf(w, "  %s with the same output as an earlier one (400 characters or more): %s tokens, %s\n",

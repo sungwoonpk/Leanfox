@@ -23,8 +23,9 @@ func twoSessions() []*Analysis {
 		},
 		Carriers: []Carrier{{Tool: "Bash", What: "Bash: git status", CarryUSD: 1}, {Tool: "Read", What: "Read", CarryUSD: 0.2}},
 		Repeats: Repeats{
-			Rereads: RepeatTotal{Count: 1, Tokens: 10, USD: 0.1},
-			Top:     []RepeatRow{{What: "Read: a.go", Times: 1, Tokens: 10, USD: 0.1}},
+			Rereads:  RepeatTotal{Count: 1, Tokens: 10, USD: 0.1},
+			Rewrites: RepeatTotal{Count: 1, Tokens: 100, USD: 0.5},
+			Top:      []RepeatRow{{What: "Read: a.go", Times: 1, Tokens: 10, USD: 0.1}},
 		},
 		WhatIf: WhatIf{
 			HandoffTokens: 3000,
@@ -47,6 +48,7 @@ func twoSessions() []*Analysis {
 		Repeats: Repeats{
 			Rereads:     RepeatTotal{Count: 2, Tokens: 20, USD: 0.3},
 			SameOutputs: RepeatTotal{Count: 1, Tokens: 5, USD: 0.05},
+			Rewrites:    RepeatTotal{Count: 2, Tokens: 300, USD: 1.5},
 			Top:         []RepeatRow{{What: "Read: a.go", Times: 2, Tokens: 20, USD: 0.3}, {What: "Bash: git status", Times: 1, Tokens: 5, USD: 0.05}},
 		},
 		WhatIf: WhatIf{
@@ -108,6 +110,9 @@ func TestCombineMergesRepeatsAndWhatIfs(t *testing.T) {
 	s := Combine(twoSessions(), 10)
 	if s.Repeats.Rereads.Count != 3 || s.Repeats.Rereads.Tokens != 30 || s.Repeats.SameOutputs.Count != 1 {
 		t.Errorf("repeats = %+v", s.Repeats)
+	}
+	if w := s.Repeats.Rewrites; w.Count != 3 || w.Tokens != 400 || w.USD != 2 {
+		t.Errorf("rewrites = %+v", w)
 	}
 	if len(s.Repeats.Top) != 2 || s.Repeats.Top[0].What != "Read: a.go" || s.Repeats.Top[0].Times != 3 {
 		t.Errorf("top = %+v", s.Repeats.Top)

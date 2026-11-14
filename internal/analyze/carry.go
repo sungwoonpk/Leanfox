@@ -365,11 +365,14 @@ func repeats(a *Analysis, segs []*segment) {
 	for _, sg := range segs {
 		for i := range sg.items {
 			it := &sg.items[i]
-			if it.at < 1 || (!it.reread && !it.same) {
+			if it.at < 1 || (!it.reread && !it.same && !it.rewrite) {
 				continue
 			}
 			tot := &a.Repeats.SameOutputs
-			if it.reread {
+			switch {
+			case it.rewrite:
+				tot = &a.Repeats.Rewrites
+			case it.reread:
 				tot = &a.Repeats.Rereads
 			}
 			tok := int64(math.Round(it.tokens))
