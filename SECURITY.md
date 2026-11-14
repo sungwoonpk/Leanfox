@@ -14,4 +14,5 @@ problem is fixed in `main`. Only the latest `main` is supported.
 Leanfox reads session files and prints sizes, counts and the kind of each command. It has no networking code (a test fails if
 any is linked), writes nothing, and never prints command arguments or folder names.
 [docs/privacy-and-safety.md](docs/privacy-and-safety.md) lists what it reads, what it prints, and how it treats damaged or
-crafted files. It has not had an independent security review.
+crafted files. Lean mode's hook runs on every prompt while the plugin is installed: it keeps a few small private files under
+`~/.claude/leanfox`, never blocks a prompt, and never changes what a tool returns. It has not had an independent security review.

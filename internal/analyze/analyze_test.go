@@ -447,6 +447,44 @@ func TestRereadsAndRepeatedOutput(t *testing.T) {
 	}
 }
 
+func TestAWriteOverAFileAlreadyInTheConversationIsARewrite(t *testing.T) {
+	ctx := int64(30_000)
+	b := newSession().turn(sonnet, 0, 0, 0, ctx)
+	step := func() { // every step adds 6,000 tokens to the conversation
+		b.turn(sonnet, 0, 0, ctx, 6_000)
+		ctx += 6_000
+	}
+	write := func(id, path string) {
+		b.use(id, "Write", path, 12_000).result(id, "Write", 40, 1)
+		step()
+	}
+	b.use("r", "Read", "/app/a.go", 30).result("r", "Read", 8_000, 2)
+	step()
+	write("w1", "/app/a.go") // read, then written whole: a rewrite
+	write("w2", "/app/b.go") // new
+	write("w3", "/app/b.go") // written twice: a rewrite
+	b.use("e", "Edit", "/app/c.go", 200).result("e", "Edit", 40, 3)
+	step()
+	write("w4", "/app/c.go")        // edited, then written whole: a rewrite
+	b.turn(sonnet, 0, 0, 0, 20_000) // a compaction: nothing is in the conversation any more
+	ctx = 20_000
+	write("w5", "/app/a.go")
+	b.turn(sonnet, 0, 0, ctx, 100)
+	a := Analyze(b.s, Options{})
+	if a.Session.Segments != 2 {
+		t.Fatalf("segments = %d, the test needs the compaction to be one", a.Session.Segments)
+	}
+	if a.Repeats.Rewrites.Count != 3 {
+		t.Errorf("rewrites = %+v, want 3", a.Repeats.Rewrites)
+	}
+	if a.Repeats.Rewrites.Tokens <= 0 || a.Repeats.Rewrites.USD <= 0 {
+		t.Errorf("a rewrite carries tokens and costs money: %+v", a.Repeats.Rewrites)
+	}
+	if a.Repeats.Rereads.Count != 0 || a.Repeats.SameOutputs.Count != 0 {
+		t.Errorf("a rewrite is not also a reread: %+v %+v", a.Repeats.Rereads, a.Repeats.SameOutputs)
+	}
+}
+
 func TestTheSameOutputOfDifferentCommandsIsNotARepeat(t *testing.T) {
 	b := newSession().turn(sonnet, 0, 0, 0, 30_000)
 	b.use("a", "Bash", "git status", 5).result("a", "Bash", 800, 5)

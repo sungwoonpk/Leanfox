@@ -2,7 +2,9 @@
 
 ## What it promises
 
-- It only reads. It never changes a session file, a setting or anything an agent sees.
+- The report only reads. It never changes a session file, a setting or anything an agent sees.
+- Lean mode only adds text to the conversation. It never blocks a prompt, and never shortens, filters or rewrites what a tool
+  returns. Its hook exits 0 whatever goes wrong inside it.
 - It never prints command arguments or folder names, only the kind of command (`git diff`) and the base name of a file.
 - It has no networking code. A test fails if a networking package is linked into the program.
 - Where Claude Code recorded a cost, the report shows that cost, and says whether its own price table reproduces it.
@@ -25,6 +27,10 @@
 - **Follow a conversation across files.** A resumed session that continues in a new file is two sessions to it, and the base of the
   second is priced as it was found.
 - **Say what is safe to cut.** See below.
+- **Make a model follow the rules of lean mode.** They are instructions. The model may not follow them, and what that does to the
+  cost was not measured.
+- **Undo a rebuild that has already begun.** The notice about a pause is given when the request that rewrites the cache is
+  already on its way. It is there so that the next long break can be preceded by a `/compact`.
 
 ## The what-ifs are not advice
 
@@ -38,18 +44,21 @@ the report is written so that it does not look like it is deciding for them.
 Built:
 
 1. **`leanfox report`.** The measurement described in the other documents.
+2. **Lean mode.** `/leanfox` turns on five habits and the notices about size and pauses ([lean mode](lean-mode.md)). Its effect on
+   cost and on quality has not been measured.
 
 Candidates, in the order that the measurements suggest, and each only if the measurement pays for it:
 
-2. **Shortening tool output with nothing lost.** Each cut part stays on disk behind a short handle, so the agent can fetch it, and a
+3. **Shortening tool output with nothing lost.** Each cut part stays on disk behind a short handle, so the agent can fetch it, and a
    test harness checks that nothing the agent needed was dropped (an error line hidden in noise must survive every filter, no
    text may be invented, and the full output must come back exactly). Before building it, `report` should replay the filters on a
    real session and say what they would have saved, counting the cost of carrying. On the sessions measured, cutting tool results
    has a ceiling of 4% to 11%, which is why it is not first.
-3. **A hand-off note for restarting a long conversation.** Built from the session file without a model: what was asked, the files
+4. **A hand-off note for restarting a long conversation.** Built from the session file without a model: what was asked, the files
    changed, the commands that failed, the open to-dos. It would come with a check of what it keeps. This is the larger ceiling
    (36% to 44% at one restart in 100 requests), and also the one that depends most on what the note holds.
-4. **A warning before a pause that would rebuild the cache.** Rebuilds were 7% and 17% of the input cost on the long sessions.
-5. **Other agents' session formats.**
+5. **A way to measure what lean mode does.** The same task, with and without it, compared on cost per task and on the work
+   produced. It needs a way to compare the work, which is the part this project lacks.
+6. **Other agents' session formats.**
 
-Nothing after the first has been started.
+Nothing after the second has been started.

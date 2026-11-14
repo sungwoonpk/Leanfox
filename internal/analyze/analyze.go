@@ -144,7 +144,10 @@ type Carrier struct {
 type Repeats struct {
 	Rereads     RepeatTotal `json:"rereads"`
 	SameOutputs RepeatTotal `json:"same_outputs"`
-	Top         []RepeatRow `json:"top"`
+	// Rewrites are Write calls over a file that was already in the conversation, so that the whole file was carried again
+	// where an Edit would have carried only the change.
+	Rewrites RepeatTotal `json:"rewrites"`
+	Top      []RepeatRow `json:"top"`
 }
 
 // RepeatTotal counts repeats of one kind.
@@ -172,6 +175,7 @@ type item struct {
 	digest      uint64
 	reread      bool
 	same        bool
+	rewrite     bool // a Write over a file that was already in the conversation
 	tokens      float64
 	carried     int
 	carry       float64
@@ -226,12 +230,14 @@ func split(s *transcript.Session) (segs []*segment, sub int, all []turn) {
 	var prev int64
 	readSeen := map[string]bool{}
 	seenOutput := map[outKey]bool{}
+	touched := map[string]bool{}
 
 	start := func() {
 		cur = &segment{}
 		segs = append(segs, cur)
 		readSeen = map[string]bool{}
 		seenOutput = map[outKey]bool{}
+		touched = map[string]bool{}
 	}
 
 	for i := range s.Events {
@@ -267,7 +273,7 @@ func split(s *transcript.Session) (segs []*segment, sub int, all []turn) {
 			it.units = float64(it.chars)
 		}
 		// Repeats are marked while the events are in order, so that "already there" means before this one.
-		markRepeats(&it, e, uses, readSeen, seenOutput)
+		markRepeats(&it, e, uses, readSeen, seenOutput, touched)
 		pending = append(pending, it)
 	}
 	return segs, sub, all
@@ -324,9 +330,15 @@ func what(tool, detail string) string {
 	return tool
 }
 
-func markRepeats(it *item, e *transcript.Event, uses map[string]transcript.Event, readSeen map[string]bool, seen map[outKey]bool) {
+func markRepeats(it *item, e *transcript.Event, uses map[string]transcript.Event, readSeen map[string]bool, seen map[outKey]bool, touched map[string]bool) {
 	switch e.Kind {
 	case transcript.KindToolUse:
+		if e.Detail != "" && (e.Tool == "Read" || e.Tool == "Edit" || e.Tool == "Write" || e.Tool == "NotebookEdit" || e.Tool == "MultiEdit") {
+			if e.Tool == "Write" && touched[e.Detail] {
+				it.rewrite = true
+			}
+			touched[e.Detail] = true
+		}
 		if e.Tool == "Edit" || e.Tool == "Write" || e.Tool == "NotebookEdit" || e.Tool == "MultiEdit" {
 			delete(readSeen, e.Detail)
 		}

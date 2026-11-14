@@ -7,6 +7,10 @@ Leanfox reads the session files that Claude Code keeps on your machine and says 
 and it does not guess: its price model reproduces the cost that Claude Code recorded to the last stored digit, and it rebuilds
 the size of the conversation at each request to within about 1.5%.
 
+It also has a **lean mode** for Claude Code: type `/leanfox` to turn it on, and `/leanfox` again to turn it off. While it is on,
+the model is told a few habits that carry fewer tokens without giving up information, and is told when a conversation has grown
+large or sat idle past the cache.
+
 Written in Go, with no dependencies. Nothing leaves your machine.
 
 ## Why
@@ -71,7 +75,27 @@ WHERE THE INPUT COST CAME FROM  ($5.92; every token is written once, then read a
 
 The report goes on with the tool results that cost most to carry, repeated reads, and the two what-if ceilings.
 
-## What it tells you
+## Lean mode
+
+```sh
+go install github.com/sungwoonpk/leanfox/cmd/leanfox@latest      # the program that the hooks call
+claude plugin marketplace add sungwoonpk/Leanfox
+claude plugin install leanfox@leanfox
+```
+
+Then in Claude Code: `/leanfox` (on), `/leanfox` (off), `/leanfox status`. To try it without installing, start Claude Code with
+`claude --plugin-dir /path/to/Leanfox`.
+
+What it does is add text to the conversation: five habits (edit a file instead of writing it whole again, do not re-read what has
+not changed, ask commands for what is needed but never cut an error, no narration between tool calls, verify as usual), and a
+sentence when the conversation first passes a size or sat idle longer than the cache lasts. It never blocks a prompt, and it
+never shortens or rewrites what a tool returns.
+
+Whether it saves money has not been measured, and on the sessions above the habits reach a few percent at most. The notices
+are about the larger items. [docs/lean-mode.md](docs/lean-mode.md) has the rules, what was checked (in real Claude Code, once),
+and how to find out for yourself with `leanfox report`.
+
+## What the report tells you
 
 - **Where the money went**, split by what it paid for, and checked against the cost Claude Code wrote into the file.
 - **What the carried conversation was made of**, by kind of text and by tool. The density of each kind is measured from the
@@ -83,25 +107,29 @@ The report goes on with the tool results that cost most to carry, repeated reads
 
 ## What it does not do
 
-It does not change anything. It does not compress, filter or rewrite what your agent sees, and it does not claim that a saving
-costs nothing in quality: that depends on whether what was cut was needed, which only the agent's work can show. The what-ifs
-are marked as ceilings for that reason. Command arguments and folder names are never printed, only the kind of command
-(`git diff`) and the name of a file. Only Claude Code's session format is read.
+The report only reads. Lean mode only adds text, and it does not compress, filter or rewrite what your agent sees. Neither claims
+that a saving costs nothing in quality: that depends on whether what was cut was needed, which only the agent's work can show.
+The what-ifs are marked as ceilings for that reason, and lean mode's effect is marked as not measured. Command arguments and
+folder names are never printed, only the kind of command (`git diff`) and the name of a file. Only Claude Code's session format
+is read, and lean mode is untried on Windows.
 
 ## How it was checked
 
 - The price table reproduced the recorded cost exactly on every session that had one, for all three models in the table that
   appear in them. [docs/validation.md](docs/validation.md) says what was and was not checked.
 - Every session with a recorded cost is explained to within 1.5% by the measured parts and the cache rebuilds.
-- 99%+ coverage; the least-squares solver is compared with an exhaustive search on 300 random problems; 43 deliberate bugs were
-  put into the code one at a time, and the tests caught 42 (the other one changes nothing that a test could see).
+- 99%+ coverage; the least-squares solver is compared with an exhaustive search on 300 random problems; 59 deliberate bugs were
+  put into the code one at a time, and the tests caught 58 (the other one changes nothing that a test could see).
 - The reader ignores what it does not know, skips broken lines, and has caps on line length, events and files.
+- Lean mode's hook never blocks a prompt, and was run once in real Claude Code: it turned on, turned off, reported its status,
+  and the rules were in a new session's context only while it was on ([details](docs/lean-mode.md)).
 - CI runs gofmt, vet, staticcheck, errcheck, gosec, race tests, govulncheck and CodeQL, and builds for four targets.
 
 ## Docs
 
 | | |
 | --- | --- |
+| [Lean mode](docs/lean-mode.md) | The rules, the notices, install, what it keeps, what was checked |
 | [How it works](docs/how-it-works.md) | The carrying cost, the fit, cache rebuilds, the what-ifs |
 | [Findings](docs/findings.md) | What the measurements say, and what they do not |
 | [Validation](docs/validation.md) | What was checked against real data, and what was not |
@@ -112,6 +140,6 @@ are marked as ceilings for that reason. Command arguments and folder names are n
 
 ## Status
 
-The `report` command is the first milestone. What comes next is chosen by what the measurements pay for: tool output that is
-shortened with every cut part kept and recoverable, and a hand-off note for restarting a long conversation. Neither is built,
-and [docs/limits.md](docs/limits.md) says why they wait.
+Two milestones: the `report` command, and lean mode. What comes next is chosen by what the measurements pay for: tool output
+that is shortened with every cut part kept and recoverable, and a hand-off note for restarting a long conversation. Neither is
+built, and [docs/limits.md](docs/limits.md) says why they wait.

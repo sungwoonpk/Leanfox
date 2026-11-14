@@ -74,6 +74,7 @@ func Combine(as []*Analysis, top int) *Summary {
 		}
 		addTotal(&s.Repeats.Rereads, a.Repeats.Rereads)
 		addTotal(&s.Repeats.SameOutputs, a.Repeats.SameOutputs)
+		addTotal(&s.Repeats.Rewrites, a.Repeats.Rewrites)
 		for _, r := range a.Repeats.Top {
 			m := rows[r.What]
 			if m == nil {

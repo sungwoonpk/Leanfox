@@ -479,3 +479,61 @@ func TestKindNames(t *testing.T) {
 		t.Error("an unset kind must say so")
 	}
 }
+
+func TestParseTailReadsOnlyTheEnd(t *testing.T) {
+	var sb strings.Builder
+	for i := range 200 {
+		sb.WriteString(jsonl(t, m{"type": "user", "message": m{"content": strings.Repeat("x", 100+i)}}))
+	}
+	full := sb.String()
+	path := filepath.Join(t.TempDir(), "s.jsonl")
+	if err := os.WriteFile(path, []byte(full), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// A window that holds the whole file gives all of it, and so does a window of zero or less.
+	for _, n := range []int64{int64(len(full)), int64(len(full)) + 10, 0, -1} {
+		s, err := ParseTail(path, n)
+		if err != nil || len(s.Events) != 200 {
+			t.Errorf("window %d: %d events, err %v", n, len(s.Events), err)
+		}
+	}
+
+	// A small window gives the last lines only, none of them cut, and the last line is the file's last line.
+	s, err := ParseTail(path, 2000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(s.Events) == 0 || len(s.Events) >= 200 || s.BadLines != 0 {
+		t.Fatalf("%d events, %d bad lines", len(s.Events), s.BadLines)
+	}
+	if last := s.Events[len(s.Events)-1]; last.Chars != 100+199 {
+		t.Errorf("last event has %d chars, want %d", last.Chars, 299)
+	}
+	// The window must not start in the middle of a line: every event is a whole line of 100 to 299 characters.
+	for _, e := range s.Events {
+		if e.Chars < 100 || e.Chars > 299 {
+			t.Errorf("an event of %d chars: a line was cut", e.Chars)
+		}
+	}
+}
+
+func TestParseTailOfAFileWithNoNewlineInTheWindow(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "s.jsonl")
+	if err := os.WriteFile(path, []byte(`{"type":"user","message":{"content":"`+strings.Repeat("y", 5000)+`"}}`+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s, err := ParseTail(path, 100)
+	if err != nil || len(s.Events) != 0 {
+		t.Errorf("a single line longer than the window is lost, not cut: %d events, err %v", len(s.Events), err)
+	}
+}
+
+func TestParseTailErrors(t *testing.T) {
+	if _, err := ParseTail(filepath.Join(t.TempDir(), "missing.jsonl"), 100); err == nil {
+		t.Error("a missing file must be an error")
+	}
+	if _, err := ParseTail(t.TempDir(), 100); err == nil {
+		t.Error("a folder must be an error")
+	}
+}

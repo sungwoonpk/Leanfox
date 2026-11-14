@@ -57,6 +57,22 @@ M = [
  ("internal/discover/discover.go", "strings.HasPrefix(filepath.Base(path), o.Session)", "strings.Contains(filepath.Base(path), o.Session)", "session filter contains"),
  ("internal/analyze/carry.go", "written := float64(min(sg.cw[0], sg.ctx[0]))", "written := float64(sg.ctx[0])", "base always written"),
  ("internal/analyze/carry.go", "(float64(sg.ctx[0])-written)*u.read", "(float64(sg.ctx[0])-written)*u.write", "warm base priced as a write"),
+ ("internal/hook/command.go", 'if len(fields) > 2 {\n\t\treturn ActionUnknown', 'if len(fields) > 3 {\n\t\treturn ActionUnknown', "extra words accepted"),
+ ("internal/hook/command.go", 'case "/leanfox", "/leanfox:leanfox":', 'case "/leanfox":', "namespaced command ignored"),
+ ("internal/hook/hook.go", "want := !on", "want := on", "toggle does not toggle"),
+ ("internal/hook/hook.go", "case on && st.Told != \"on\":", "case on && st.Told == \"on\":", "rules given when already told"),
+ ("internal/hook/hook.go", "if on {\n\t\tparts = append(parts, nudges(", "if !on {\n\t\tparts = append(parts, nudges(", "notices while the mode is off"),
+ ("internal/hook/nudge.go", "now.Sub(l.at) > l.ttl", "now.Sub(l.at) < l.ttl", "pause test inverted"),
+ ("internal/hook/nudge.go", "st.GapNudged != l.at.Unix()", "st.GapNudged == l.at.Unix()", "pause repeated"),
+ ("internal/hook/nudge.go", "l.context >= t && !contains(st.Crossed, t)", "l.context >= t", "size repeated"),
+ ("internal/hook/nudge.go", "if e.Tokens.CacheWrite1h > 0 {\n\t\t\tl.ttl = longCache", "if e.Tokens.CacheWrite1h > 0 {\n\t\t\tl.ttl = shortCache", "lifetime ignored"),
+ ("internal/hook/nudge.go", "if e.Kind == transcript.KindTurn && !e.Sidechain {", "if e.Kind == transcript.KindTurn {", "sub-agents counted"),
+ ("internal/hook/state.go", "id == \"..\"", "id == \"...\"", "dot-dot id accepted"),
+ ("internal/hook/state.go", "os.MkdirAll(filepath.Dir(path), 0o700)", "os.MkdirAll(filepath.Dir(path), 0o755)", "state folder not private"),
+ ("internal/hook/state.go", "now.Sub(info.ModTime()) > sessionKeepFor", "now.Sub(info.ModTime()) < sessionKeepFor", "pruning inverted"),
+ ("internal/hook/hook.go", "for cut > 0 && !utf8.RuneStart(text[cut]) {", "for cut > 0 && false {", "cut inside a character"),
+ ("internal/analyze/analyze.go", "if e.Tool == \"Write\" && touched[e.Detail] {", "if e.Tool == \"Write\" && !touched[e.Detail] {", "rewrite inverted"),
+ ("internal/transcript/transcript.go", "if size := info.Size(); maxBytes > 0 && size > maxBytes {", "if size := info.Size(); maxBytes > 0 && size < maxBytes {", "tail window inverted"),
 ]
 
 survived, killed, missing = [], 0, []

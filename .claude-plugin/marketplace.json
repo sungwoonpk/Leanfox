@@ -1,0 +1,15 @@
+{
+  "name": "leanfox",
+  "description": "Lean mode for Claude Code, and the leanfox report that measures where the tokens go.",
+  "owner": {
+    "name": "sungwoonpk",
+    "url": "https://github.com/sungwoonpk"
+  },
+  "plugins": [
+    {
+      "name": "leanfox",
+      "description": "/leanfox turns lean mode on and off. Needs the leanfox program on PATH.",
+      "source": "./"
+    }
+  ]
+}

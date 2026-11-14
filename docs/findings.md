@@ -46,6 +46,21 @@ tool that only shortens command output cannot reach them.
 These are the most that could have been saved if nothing else had changed, what was cut was never needed again, and the note
 held everything that mattered. The report says so wherever it prints them.
 
+## What the lean-mode rules aim at
+
+The first rule of lean mode is to edit a file and not write it whole again. `leanfox report` counts the writes over a file that
+was already in the conversation:
+
+| | Session A | Session B |
+| --- | --- | --- |
+| `Write` over a file that was already read, edited or written | 19 files | 20 files |
+| Tokens they carried | about 78,000 | about 124,000 |
+| Share of the input cost | 7.6% | 5.2% |
+| All `Write` calls, new files included | 17% | 19% |
+
+An `Edit` would have carried the change instead. Whether the change would have been small enough to matter, and whether the agent
+would have been as careful, is not something these numbers say.
+
 ## What this does not show
 
 - **One person, one way of working.** Long sessions that build things and write many files. A session that mostly reads a large

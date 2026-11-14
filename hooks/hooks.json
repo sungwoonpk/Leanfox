@@ -1,0 +1,27 @@
+{
+  "description": "Leanfox lean mode. Each hook does nothing when the leanfox program is not installed, and nothing when lean mode is off.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v leanfox >/dev/null 2>&1 || exit 0; leanfox hook session-start",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v leanfox >/dev/null 2>&1 || exit 0; leanfox hook user-prompt",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

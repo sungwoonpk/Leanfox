@@ -505,3 +505,35 @@ func parseTime(s string) time.Time {
 func (s *Session) Describe() string {
 	return fmt.Sprintf("%s: %d lines, %d events, %d skipped", s.Path, s.Lines, len(s.Events), s.BadLines)
 }
+
+// ParseTail reads only the end of a session file: the last maxBytes bytes, starting at the first whole line in them. It
+// is for callers that need the latest request of a file that may be tens of megabytes, such as a hook that runs on every
+// prompt. A line longer than the window is lost, so a window must be larger than the largest result a caller can expect
+// to need to read past.
+func ParseTail(path string, maxBytes int64) (*Session, error) {
+	f, err := os.Open(path) // #nosec G304 -- the path is the file the caller asked to read
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("%s is not a regular file", path)
+	}
+	var r io.Reader = f
+	if size := info.Size(); maxBytes > 0 && size > maxBytes {
+		if _, err := f.Seek(size-maxBytes, io.SeekStart); err != nil {
+			return nil, err
+		}
+		br := bufio.NewReaderSize(f, 1<<20)
+		// The window begins somewhere in a line. Skip to the next one.
+		if _, err := br.ReadBytes('\n'); err != nil && !errors.Is(err, io.EOF) {
+			return nil, err
+		}
+		r = br
+	}
+	return Parse(r, path)
+}

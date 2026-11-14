@@ -13,6 +13,7 @@ import (
 
 	"github.com/sungwoonpk/leanfox/internal/analyze"
 	"github.com/sungwoonpk/leanfox/internal/discover"
+	"github.com/sungwoonpk/leanfox/internal/hook"
 	"github.com/sungwoonpk/leanfox/internal/pricing"
 	"github.com/sungwoonpk/leanfox/internal/report"
 	"github.com/sungwoonpk/leanfox/internal/transcript"
@@ -33,22 +34,25 @@ type Env struct {
 	Getenv func(string) string
 	Home   string
 	Now    func() time.Time
+	Stdin  io.Reader
 }
 
 // OSEnv is the real environment.
 func OSEnv() Env {
 	home, _ := os.UserHomeDir()
-	return Env{Getenv: os.Getenv, Home: home, Now: time.Now}
+	return Env{Getenv: os.Getenv, Home: home, Now: time.Now, Stdin: os.Stdin}
 }
 
-const usage = `leanfox measures where an AI coding agent's tokens and money go.
+const usage = `leanfox measures where an AI coding agent's tokens and money go, and has a lean mode for Claude Code.
 
 Usage:
   leanfox report [flags] [file or folder ...]   analyze Claude Code sessions
+  leanfox mode [on|off|toggle|status]           lean mode, from the terminal
+  leanfox hook session-start|user-prompt        what the Claude Code plugin runs; reads the hook input on stdin
   leanfox version
   leanfox help
 
-Run "leanfox report -h" for the flags of report.
+Run "leanfox report -h" for the flags of report. Lean mode is described in docs/lean-mode.md.
 `
 
 // Run runs one command and returns the exit code.
@@ -60,6 +64,10 @@ func Run(args []string, stdout, stderr io.Writer, env Env) int {
 	switch args[0] {
 	case "report":
 		return runReport(args[1:], stdout, stderr, env)
+	case "mode":
+		return runMode(args[1:], stdout, stderr, env)
+	case "hook":
+		return runHook(args[1:], stderr, stdout, env)
 	case "version", "-v", "--version":
 		fmt.Fprintf(stdout, "leanfox %s\n", Version)
 		return ExitOK
@@ -256,4 +264,66 @@ func plural(n int, word string) string {
 		return "1 " + word
 	}
 	return fmt.Sprintf("%d %ss", n, word)
+}
+
+func store(env Env) hook.Store { return hook.Store{Dir: hook.StateDir(env.Getenv, env.Home)} }
+
+// runMode turns lean mode on and off from the terminal, and says what it is.
+func runMode(args []string, stdout, stderr io.Writer, env Env) int {
+	st := store(env)
+	arg := "status"
+	if len(args) > 1 {
+		fmt.Fprintln(stderr, "usage: leanfox mode [on|off|toggle|status]")
+		return ExitUsage
+	}
+	if len(args) == 1 {
+		arg = args[0]
+	}
+	var want bool
+	switch arg {
+	case "status":
+		fmt.Fprintf(stdout, "Leanfox mode: %s\n", onOff(st.Mode()))
+		return ExitOK
+	case "on":
+		want = true
+	case "off":
+		want = false
+	case "toggle":
+		want = !st.Mode()
+	default:
+		fmt.Fprintln(stderr, "usage: leanfox mode [on|off|toggle|status]")
+		return ExitUsage
+	}
+	if err := st.SetMode(want); err != nil {
+		fmt.Fprintf(stderr, "leanfox: %v\n", err)
+		return ExitError
+	}
+	fmt.Fprintf(stdout, "Leanfox mode: %s\n", onOff(want))
+	return ExitOK
+}
+
+// runHook is what Claude Code's hooks call. It always exits 0 when it was called with a known event, whatever goes wrong
+// inside: a hook that exits with 2 blocks the user's prompt, and a hook that fails loudly on every prompt is worse than
+// one that says nothing. Set LEANFOX_DEBUG=1 to see what went wrong on stderr.
+func runHook(args []string, stderr, stdout io.Writer, env Env) int {
+	if len(args) != 1 || (args[0] != hook.EventSessionStart && args[0] != hook.EventUserPrompt) {
+		fmt.Fprintln(stderr, "usage: leanfox hook session-start|user-prompt")
+		return ExitError // not 2: 2 would block a prompt
+	}
+	stdin := env.Stdin
+	if stdin == nil {
+		stdin = strings.NewReader("")
+	}
+	err := hook.Run(args[0], stdin, stdout, hook.Env{Store: store(env), Now: env.Now, Table: pricing.NewTable(nil)})
+	if err != nil && env.Getenv != nil && env.Getenv("LEANFOX_DEBUG") == "1" {
+		fmt.Fprintf(stderr, "leanfox hook: %v\n", err)
+	}
+	return ExitOK
+}
+
+func onOff(on bool) string {
+	if on {
+		return "on"
+	}
+	return "off"
 }
