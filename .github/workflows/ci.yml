@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A newer push to the same branch makes the older run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Format, vet, staticcheck and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          # The newest patch of Go 1.26, not the exact version in go.mod, and not whatever older patch the runner
+          # image happens to have cached. A pinned or cached patch can fail the vulnerability scan on standard
+          # library flaws that a later patch has fixed.
+          go-version: "1.26.x"
+          check-latest: true
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "these files need gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi
+      - run: go vet ./...
+      - name: staticcheck
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+          staticcheck ./...
+      # An ignored error is how a failed write goes unnoticed. The exclusions are listed, with reasons, in .errcheck-excludes.
+      - name: errcheck
+        run: |
+          go install github.com/kisielk/errcheck@latest
+          errcheck -ignoretests -exclude .errcheck-excludes ./...
+      - name: gosec
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          gosec -quiet ./...
+      - name: Tests with the race detector, and coverage of the libraries
+        run: go test -race -count=1 -timeout 10m ./... -coverprofile=cover.out -coverpkg=./internal/...
+      - name: Coverage gate
+        run: |
+          total=$(go tool cover -func=cover.out | awk '/^total:/ {gsub("%","",$3); print $3}')
+          echo "coverage of the libraries: ${total}%"
+          awk -v t="$total" 'BEGIN { exit (t >= 90.0 ? 0 : 1) }' || { echo "coverage fell under 90%"; exit 1; }
+
+  vuln:
+    name: Known vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          check-latest: true
+      - run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+  build:
+    name: Build for ${{ matrix.goos }}/${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goos: linux, goarch: amd64 }
+          - { goos: linux, goarch: arm64 }
+          - { goos: darwin, goarch: arm64 }
+          - { goos: windows, goarch: amd64 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          check-latest: true
+      # No C compiler is involved, so every target builds from this one machine.
+      - run: CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -trimpath -o leanfox-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/leanfox
