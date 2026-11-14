@@ -1,0 +1,11 @@
+{
+  "name": "leanfox",
+  "version": "0.2.0",
+  "description": "Lean mode for Claude Code: /leanfox turns on habits that carry fewer tokens without giving up information, and says when a conversation has grown large or sat idle past the cache. Needs the leanfox program on PATH.",
+  "author": {
+    "name": "sungwoonpk",
+    "url": "https://github.com/sungwoonpk"
+  },
+  "repository": "https://github.com/sungwoonpk/Leanfox",
+  "keywords": ["tokens", "cost", "context", "cache"]
+}

@@ -381,3 +381,140 @@ func TestOSEnv(t *testing.T) {
 	}
 	_ = pricing.WebSearchDollars // the package is used by the fixtures above
 }
+
+// leanEnv is an environment whose state folder is a fresh temporary one.
+func leanEnv(t *testing.T, stdin string) Env {
+	t.Helper()
+	dir := t.TempDir()
+	return Env{
+		Getenv: func(k string) string {
+			if k == "LEANFOX_STATE_DIR" {
+				return dir
+			}
+			return ""
+		},
+		Home:  t.TempDir(),
+		Now:   func() time.Time { return fixedNow },
+		Stdin: strings.NewReader(stdin),
+	}
+}
+
+func TestModeFromTheTerminal(t *testing.T) {
+	env := leanEnv(t, "")
+	for _, c := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"mode"}, "Leanfox mode: off\n"},
+		{[]string{"mode", "status"}, "Leanfox mode: off\n"},
+		{[]string{"mode", "on"}, "Leanfox mode: on\n"},
+		{[]string{"mode"}, "Leanfox mode: on\n"},
+		{[]string{"mode", "toggle"}, "Leanfox mode: off\n"},
+		{[]string{"mode", "toggle"}, "Leanfox mode: on\n"},
+		{[]string{"mode", "off"}, "Leanfox mode: off\n"},
+	} {
+		code, out, errs := run(env, c.args...)
+		if code != ExitOK || out != c.want || errs != "" {
+			t.Errorf("%v: exit %d, %q, stderr %q, want %q", c.args, code, out, errs, c.want)
+		}
+	}
+	for _, args := range [][]string{{"mode", "sideways"}, {"mode", "on", "off"}} {
+		if code, _, errs := run(env, args...); code != ExitUsage || !strings.Contains(errs, "usage:") {
+			t.Errorf("%v: exit %d %q", args, code, errs)
+		}
+	}
+}
+
+func TestModeThatCannotBeSaved(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(file, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	env := leanEnv(t, "")
+	env.Getenv = func(k string) string {
+		if k == "LEANFOX_STATE_DIR" {
+			return filepath.Join(file, "inside")
+		}
+		return ""
+	}
+	if code, _, errs := run(env, "mode", "on"); code != ExitError || errs == "" {
+		t.Errorf("exit %d %q", code, errs)
+	}
+}
+
+func TestTheHookTurnsTheModeOnFromTheCommand(t *testing.T) {
+	env := leanEnv(t, `{"session_id":"s1","prompt":"/leanfox","transcript_path":""}`)
+	code, out, errs := run(env, "hook", "user-prompt")
+	if code != ExitOK || errs != "" {
+		t.Fatalf("exit %d stderr %q", code, errs)
+	}
+	var o struct {
+		HookSpecificOutput struct{ HookEventName, AdditionalContext string }
+	}
+	if err := json.Unmarshal([]byte(out), &o); err != nil || o.HookSpecificOutput.HookEventName != "UserPromptSubmit" ||
+		!strings.Contains(o.HookSpecificOutput.AdditionalContext, "LEANFOX MODE IS ON") {
+		t.Errorf("err %v\n%s", err, out)
+	}
+	if _, status, _ := run(env, "mode"); status != "Leanfox mode: on\n" {
+		t.Errorf("the hook did not turn the mode on: %q", status)
+	}
+
+	env.Stdin = strings.NewReader(`{"session_id":"s2","source":"startup"}`)
+	_, out, _ = run(env, "hook", "session-start")
+	if !strings.Contains(out, `"hookEventName":"SessionStart"`) || !strings.Contains(out, "LEANFOX MODE IS ON") {
+		t.Errorf("session start with the mode on:\n%s", out)
+	}
+}
+
+func TestTheHookNeverBlocksAPrompt(t *testing.T) {
+	// Whatever is wrong, a hook called with a known event exits 0 and prints nothing.
+	for _, in := range []string{"", "not json", `{"session_id": 5}`, "[]", `{"prompt": "/leanfox off now"}`} {
+		env := leanEnv(t, in)
+		code, out, errs := run(env, "hook", "user-prompt")
+		if code != ExitOK {
+			t.Errorf("input %q: exit %d, which would block the prompt", in, code)
+		}
+		if errs != "" {
+			t.Errorf("input %q: stderr %q without LEANFOX_DEBUG", in, errs)
+		}
+		if strings.Contains(in, "not json") && out != "" {
+			t.Errorf("input %q printed %q", in, out)
+		}
+	}
+	// With LEANFOX_DEBUG the reason is shown, still with exit 0.
+	env := leanEnv(t, "not json")
+	base := env.Getenv
+	env.Getenv = func(k string) string {
+		if k == "LEANFOX_DEBUG" {
+			return "1"
+		}
+		return base(k)
+	}
+	if code, _, errs := run(env, "hook", "user-prompt"); code != ExitOK || !strings.Contains(errs, "leanfox hook:") {
+		t.Errorf("debug: exit %d %q", code, errs)
+	}
+	// No input at all (a nil reader) is the same as empty input.
+	env = leanEnv(t, "")
+	env.Stdin = nil
+	if code, out, _ := run(env, "hook", "user-prompt"); code != ExitOK || out != "" {
+		t.Errorf("nil input: exit %d %q", code, out)
+	}
+}
+
+func TestTheHookWithoutAKnownEventIsAnErrorButNotABlock(t *testing.T) {
+	for _, args := range [][]string{{"hook"}, {"hook", "pre-tool-use"}, {"hook", "user-prompt", "extra"}} {
+		code, _, errs := run(leanEnv(t, "{}"), args...)
+		if code != ExitError || !strings.Contains(errs, "usage:") {
+			t.Errorf("%v: exit %d %q", args, code, errs)
+		}
+		if code == 2 {
+			t.Errorf("%v: exit 2 would block a prompt", args)
+		}
+	}
+}
+
+func TestOSEnvHasStdin(t *testing.T) {
+	if OSEnv().Stdin == nil {
+		t.Error("the real environment must give the hook its input")
+	}
+}
